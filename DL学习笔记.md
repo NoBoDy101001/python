@@ -1,0 +1,233 @@
+自动机器学习技术AutoML: 数据处理、特征工程、模型、优化算法等流程自动流水线化
+自动神经网络结构搜索技术NAS: 拓扑超参优化；优化目标-网络性能、搜索时间；搜索空间，搜索策略，性能评估策略；
+
+1.	性能评估策略：不仅取决于网络结构，还取决于训练效果（同一个网络学习参数的好坏）；计算量过大——条件松弛；更少的epochs（但不同结构的网络高效的时期不同）、数据精炼（均匀覆盖、难例提取）、迁移学习、数据样本本身的缩放。评估指标：正确率、参数数量、FLOPs、推理延时、计算强度、内存占用、功耗。多目标帕累托最优-非劣解集
+2.	时间性能：真实时延（在机器上的运行时间）-不便——>时延预测（拆解成kernel size, stride for convolution, expansion ratio）
+3.	网络结构编码参数化，包括算子、cell连接；channel未加入
+4.	参数共享
+5.	一次训练：交替训练-网络结构和网络权重交替更新造成偏差——>One Shot，Supernet只做一次训练
+二、搜索算法（优化）：随机搜索baseline、贪婪搜索、
+1.	贪婪算法：渐进增加分支，每一步都选择最好的K个模型进行训练，对早期的错误没有修正能力
+2.	进化算法：空间内直接搜索
+3.	强化学习：序列模型action-链接下一cell，网络模型结构参数化、连续化。State：当前网络结构；action：输出下一层的算子；return：性能评估指标
+4.	贝叶斯优化：估计目标函数的分布
+
+存在问题：自动数据标签标注，训练量过大，基于梯度的方法需要参数连续化
+ 
+
+## 1. 基础
+
+
+
+#### 1. 正则化
+
+- LayerNorm:
+  $$
+  y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+  $$
+  
+
+#### 2. softmax
+
+![image-20220517170329898](C:\Users\zhaosida\AppData\Roaming\Typora\typora-user-images\image-20220517170329898.png)
+
+减去最大值：计算稳定性
+
+
+
+
+
+## 3. huggingface模型
+
+**Bert**
+
+Embedding
+
+embeddings.position_ids
+embeddings.word_embeddings.weight
+embeddings.position_embeddings.weight
+embeddings.token_type_embeddings.weight
+embeddings.LayerNorm.weight
+embeddings.LayerNorm.bias
+
+encoder
+
+QKV + Wo + LN + FFN + LN
+
+layer.0.attention.self.query.weight
+layer.0.attention.self.query.bias
+layer.0.attention.self.key.weight
+layer.0.attention.self.key.bias
+layer.0.attention.self.value.weight
+layer.0.attention.self.value.bias
+layer.0.attention.output.dense.weight
+layer.0.attention.output.dense.bias
+layer.0.attention.output.LayerNorm.weight
+layer.0.attention.output.LayerNorm.bias
+layer.0.intermediate.dense.weight
+layer.0.intermediate.dense.bias
+layer.0.output.dense.weight
+layer.0.output.dense.bias
+layer.0.output.LayerNorm.weight
+layer.0.output.LayerNorm.bias
+
+
+
+**ViT**
+
+Patch_Embedding
+
+\# in ViT, layernorm is applied before self-attention
+
+
+
+## 4. Python
+
+for k, g in groupby(data, keyfunc)：
+
+data是分组数据（可迭代对象），keyfunc是分组函数
+
+k是当前分组键，g是一个迭代器，可用于在该分组键定义的组上迭代。换句话说，groupby迭代器本身返回迭代器。
+
+- 冒号注释变量类型：var: type = value 其实本质上就是 var = value # type就是var期望的类型
+
+- \*args、 \*\*kwargs：\*args和 \*\*kwargs语法不仅可以在函数定义中使用，同样可以在函数调用的时候使用。不同的是，如果说在函数定义的位置使用\*args和\*\*kwargs是一个将参数pack的过程，那么在函数调用的时候就是一个将参数unpack的过程了。
+
+
+
+$$
+\sqrt{k}
+$$
+
+- pybind
+
+  - 默认参数```def("forward", &eet::op::MultiHeadAttention::forward, "MultiHeadAttention forward", py::arg("need");```
+
+    
+
+
+
+## 5. CUDA编程
+
+#### 5.1 编程模型
+
+线程块
+
+根据线程ID寻址：对于 一个三维的大小为 (Dx，Dy，Dz)的块，这个线程的索引是(x，y，z)， 线程的ID 是(x + y Dx + z DxDy)。
+
+- 注意一个tensor的shape(a, b, c)，block(x, y, z)，是c、b、a对应x、y、z
+
+```text
+threadIdx.x
+threadIdx.y
+blockIdx.x
+blockIdx.y
+```
+
+线程的内置变量blockDim，获取线程块各个维度的大小（Dx,Dy)
+
+```
+blockDim.x,y,z	给出块中特定方向的线程数(长宽高)
+gridDim.x,y,z	给出网格中特定方向的块数
+```
+
+![img](https://images2015.cnblogs.com/blog/494924/201703/494924-20170303224153626-1838869747.png)
+
+
+
+![img](https://images2015.cnblogs.com/blog/494924/201703/494924-20170303224323438-2036415075.png)
+
+block 2D 3*4
+
+| (0,0) | (1,0) | (2,0) |
+| ----- | ----- | ----- |
+| (0,1) | (1,1) | (2,1) |
+| (0,2) | (1,2) | (2,2) |
+| (0,3) | (1,3) | (2,3) |
+
+
+
+| 0    | 1    | 2    |
+| ---- | ---- | ---- |
+| 3    | 4    | 5    |
+| 6    | 7    | 8    |
+| 9    | 10   | 11   |
+
+**计算公式**
+
+    int blockId = blockIdx.x + blockIdx.y * gridDim.x  
+                     + gridDim.x * gridDim.y * blockIdx.z;  
+    int threadId = blockId * (blockDim.x * blockDim.y * blockDim.z)  
+                       + (threadIdx.z * (blockDim.x * blockDim.y))  
+                       + (threadIdx.y * blockDim.x) + threadIdx.x;
+    
+    根据blockId反求blockIdx.x、blockIdx.y、blockIdx.z：
+    blockIdx.x = blockId % gridDim.x
+    blockIdx.z = blockId / (gridDim.x * gridDim.y)
+    
+    grid和block维度tips：
+    明确x轴（主方向，数据展开的方向），以tensor的shape为匹配目标。
+    例：有一tensor维度(m, n)，拆分成grid(m, f), block(n/f)
+    (m, f, n/f),x=n/f,y=f,z=m, index = threadIdx.x + blockIdx.y * n/f + blockIdx.x * f * n/f
+
+
+
+#### 5.2 kernel代码
+
+template模板函数需要显式实例化
+
+确定index：（1）index的范围；（2）作为索引时的映射或对应关系
+
+简单的方法：按照tensor的维度申请grid和block（注意blockId是在gridDim范围内取值）
+
+- block size：seq_len，取32、64...，增加判断防止溢出
+
+
+
+#### 5.3 cuda fp16
+
+CUDA 7.5 中定义的 half2 结构在一个32位的字中存储了两个半精度浮点数
+
+![image-20220506141250035](C:\Users\zhaosida\AppData\Roaming\Typora\typora-user-images\image-20220506141250035.png)
+
+
+
+#### 5.4 cublas库
+
+cublas api： https://chiemon.github.io/2020/01/11/cublas-api.html
+
+
+
+#### 5.5 cuda调试
+
+1. 在cuda kernel中printf
+2. cuda() 在gpu上的数据需要拷贝回host侧 cudaMemcpy
+
+
+
+
+
+
+
+
+
+## 6. NLP
+
+softmax
+
+$$ \sigma(z_i) = \frac{e^{z_{i}}}{\sum_{j=1}^K e^{z_{j}}} \ \ \ for\ i=1,2,\dots,K $$
+
+
+
+layernorm
+
+batchnorm
+
+#### 1. attention
+
+- qkT为什么要除以根号dk：softmax输入很大时，其梯度会变得很小，趋近于0，除以根号dk使得D(qkT/sqrt(dk))方差稳定到1，使softmax的梯度不至于太小。
+
+
+
+decoder生成训练：Teacher Forcing
+
